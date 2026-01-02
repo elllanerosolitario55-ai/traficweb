@@ -21,16 +21,79 @@ import {
   Target,
   Zap,
   Copy,
-  Check
+  Check,
+  Loader2
 } from "lucide-react";
 
 const formatNumber = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
+// Generar métricas basadas en el dominio
+const generateMetrics = (domain: string) => {
+  // Usar el dominio como semilla para generar números consistentes
+  const seed = domain.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+  const baseVisits = 10000 + (seed % 50000);
+  const uniqueUsers = Math.floor(baseVisits * 0.74);
+  const ranking = 1 + (seed % 100);
+  const referringDomains = 50 + (seed % 500);
+
+  return {
+    visits: baseVisits,
+    visitsChange: (5 + (seed % 20)).toFixed(1),
+    uniqueUsers,
+    uniqueUsersChange: (3 + (seed % 15)).toFixed(1),
+    ranking,
+    rankingChange: 5 + (seed % 25),
+    referringDomains,
+    referringDomainsChange: 10 + (seed % 50),
+    trafficSources: [
+      { name: 'Google Organico', visits: Math.floor(baseVisits * 0.45), percentage: 45, color: 'bg-emerald-500' },
+      { name: 'Directo', visits: Math.floor(baseVisits * 0.25), percentage: 25, color: 'bg-sky-500' },
+      { name: 'Redes Sociales', visits: Math.floor(baseVisits * 0.15), percentage: 15, color: 'bg-rose-500' },
+      { name: 'Referencias', visits: Math.floor(baseVisits * 0.10), percentage: 10, color: 'bg-amber-500' },
+      { name: 'Otros', visits: Math.floor(baseVisits * 0.05), percentage: 5, color: 'bg-slate-500' },
+    ],
+    keywords: [
+      { keyword: domain.replace(/\./g, ' ').replace(/www/g, '').trim(), position: 1 + (seed % 5), traffic: 1000 + (seed % 3000), trend: 'up', change: 10 + (seed % 20) },
+      { keyword: `${domain.split('.')[0]} servicios`, position: 5 + (seed % 10), traffic: 500 + (seed % 2000), trend: 'up', change: 5 + (seed % 15) },
+      { keyword: `mejor ${domain.split('.')[0]}`, position: 8 + (seed % 15), traffic: 300 + (seed % 1500), trend: 'up', change: 3 + (seed % 12) },
+      { keyword: `${domain.split('.')[0]} online`, position: 12 + (seed % 20), traffic: 200 + (seed % 1000), trend: seed % 2 === 0 ? 'up' : 'down', change: 2 + (seed % 10) },
+      { keyword: `${domain.split('.')[0]} 2025`, position: 15 + (seed % 25), traffic: 100 + (seed % 800), trend: 'up', change: 8 + (seed % 18) },
+    ],
+    seoAudit: {
+      health: 70 + (seed % 30),
+      speed: 50 + (seed % 45),
+      mobile: 75 + (seed % 25),
+    }
+  };
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [websiteUrl, setWebsiteUrl] = useState("www.pasionred.com");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzedDomain, setAnalyzedDomain] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState(generateMetrics("www.pasionred.com"));
+
+  const handleAnalyze = () => {
+    if (!websiteUrl.trim()) {
+      alert("Por favor ingresa un dominio para analizar");
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    // Simular tiempo de análisis
+    setTimeout(() => {
+      const newMetrics = generateMetrics(websiteUrl);
+      setMetrics(newMetrics);
+      setAnalyzedDomain(websiteUrl);
+      setIsAnalyzing(false);
+      setActiveTab("dashboard");
+    }, 2000);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -48,16 +111,38 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <Input
-              placeholder="Ingresa tu dominio..."
+              placeholder="Ingresa tu dominio (ej: miempresa.com)..."
               value={websiteUrl}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsiteUrl(e.target.value)}
-              className="flex-1 md:w-64 bg-slate-800/50 border-slate-700 text-white"
+              onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+              className="flex-1 md:w-72 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
             />
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              Analizar
+            <Button
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analizando...
+                </>
+              ) : (
+                'Analizar'
+              )}
             </Button>
           </div>
         </div>
+        {analyzedDomain && (
+          <div className="container mx-auto px-4 md:px-6 pb-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-400">Analizando:</span>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                {analyzedDomain}
+              </Badge>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Navigation Tabs */}
@@ -124,11 +209,11 @@ export default function Home() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm text-slate-400 mb-1">Visitas Totales</p>
-                        <h3 className="text-3xl font-bold text-white">24,563</h3>
+                        <h3 className="text-3xl font-bold text-white">{formatNumber(metrics.visits)}</h3>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            +12.5%
+                            +{metrics.visitsChange}%
                           </Badge>
                         </div>
                       </div>
@@ -142,11 +227,11 @@ export default function Home() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm text-slate-400 mb-1">Usuarios Unicos</p>
-                        <h3 className="text-3xl font-bold text-white">18,234</h3>
+                        <h3 className="text-3xl font-bold text-white">{formatNumber(metrics.uniqueUsers)}</h3>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className="bg-sky-500/20 text-sky-400 border-sky-500/30">
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            +8.2%
+                            +{metrics.uniqueUsersChange}%
                           </Badge>
                         </div>
                       </div>
@@ -160,11 +245,11 @@ export default function Home() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm text-slate-400 mb-1">Ranking SEO</p>
-                        <h3 className="text-3xl font-bold text-white">#42</h3>
+                        <h3 className="text-3xl font-bold text-white">#{metrics.ranking}</h3>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            +15 pos
+                            +{metrics.rankingChange} pos
                           </Badge>
                         </div>
                       </div>
@@ -178,11 +263,11 @@ export default function Home() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm text-slate-400 mb-1">Dominios Referentes</p>
-                        <h3 className="text-3xl font-bold text-white">342</h3>
+                        <h3 className="text-3xl font-bold text-white">{metrics.referringDomains}</h3>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30">
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            +23
+                            +{metrics.referringDomainsChange}
                           </Badge>
                         </div>
                       </div>
@@ -198,13 +283,7 @@ export default function Home() {
                   <Card className="p-6 bg-slate-900/50 border-slate-800">
                     <h3 className="text-lg font-semibold text-white mb-4">Trafico por Fuente</h3>
                     <div className="space-y-4">
-                      {[
-                        { name: 'Google Organico', visits: 12453, percentage: 50.7, color: 'bg-emerald-500' },
-                        { name: 'Directo', visits: 4823, percentage: 19.6, color: 'bg-sky-500' },
-                        { name: 'Redes Sociales', visits: 3872, percentage: 15.8, color: 'bg-rose-500' },
-                        { name: 'Referencias', visits: 2415, percentage: 9.8, color: 'bg-amber-500' },
-                        { name: 'Otros', visits: 1000, percentage: 4.1, color: 'bg-slate-500' },
-                      ].map((source, idx) => (
+                      {metrics.trafficSources.map((source, idx) => (
                         <div key={idx} className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-slate-300">{source.name}</span>
@@ -224,13 +303,7 @@ export default function Home() {
                   <Card className="p-6 bg-slate-900/50 border-slate-800">
                     <h3 className="text-lg font-semibold text-white mb-4">Top Keywords</h3>
                     <div className="space-y-3">
-                      {[
-                        { keyword: 'marketing digital', position: 3, traffic: 2342, trend: 'up', change: 15 },
-                        { keyword: 'seo para empresas', position: 7, traffic: 1823, trend: 'up', change: 12 },
-                        { keyword: 'redes sociales estrategia', position: 12, traffic: 1245, trend: 'up', change: 8 },
-                        { keyword: 'email marketing', position: 18, traffic: 892, trend: 'down', change: 5 },
-                        { keyword: 'content marketing', position: 22, traffic: 634, trend: 'up', change: 18 },
-                      ].map((kw, idx) => (
+                      {metrics.keywords.map((kw, idx) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800/70 transition-colors">
                           <div className="flex-1">
                             <p className="text-white font-medium text-sm">{kw.keyword}</p>
@@ -260,9 +333,9 @@ export default function Home() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
-                      { label: 'Salud del Sitio', score: 87, color: 'bg-emerald-500', status: 'Excelente' },
-                      { label: 'Velocidad de Carga', score: 72, color: 'bg-amber-500', status: 'Bueno' },
-                      { label: 'Mobile Friendly', score: 95, color: 'bg-emerald-500', status: 'Excelente' },
+                      { label: 'Salud del Sitio', score: metrics.seoAudit.health, color: 'bg-emerald-500', status: 'Excelente' },
+                      { label: 'Velocidad de Carga', score: metrics.seoAudit.speed, color: 'bg-amber-500', status: 'Bueno' },
+                      { label: 'Mobile Friendly', score: metrics.seoAudit.mobile, color: 'bg-emerald-500', status: 'Excelente' },
                     ].map((audit, idx) => (
                       <div key={idx} className="p-4 bg-slate-800/50 rounded-lg">
                         <div className="flex items-center justify-between mb-3">
